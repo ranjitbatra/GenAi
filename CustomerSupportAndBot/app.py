@@ -59,6 +59,18 @@ def render_header_with_logo():
     )
 # ---------------- Env ----------------
 load_dotenv()
+# after: load_dotenv()
+try:
+    import streamlit as st
+    # Promote Streamlit secrets to env vars if not already set
+    for k in ["EURI_API_KEY","EURON_URL","EURON_MODEL",
+              "EURON_CHAT_URL","EURON_CHAT_MODEL","EURON_CHAT_TEMPERATURE"]:
+        if k in st.secrets and not os.getenv(k):
+            os.environ[k] = str(st.secrets[k])
+except Exception:
+    pass
+
+
 EURI_API_KEY = os.getenv("EURI_API_KEY", "")
 EURON_URL    = os.getenv("EURON_URL", "https://api.euron.one/api/v1/euri/embeddings")
 EURON_MODEL  = os.getenv("EURON_MODEL", "text-embedding-3-small")
