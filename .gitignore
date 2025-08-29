@@ -1,13 +1,18 @@
-# ignore everything in data/index ...
-data/index/*
-
-# ...but keep the tiny demo index artifacts we want to publish
-!data/index/docs.faiss.index
-!data/index/docs.faiss.metadata.jsonl
-
-# general
+# Python
 __pycache__/
 *.pyc
-.streamlit/
-.env
-.devcontainer/
+
+# Editors/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Streamlit secrets anywhere
+.streamlit/secrets.toml
+
+# Virtual envs (if ever created)
+.venv/
+venv/
+env/
+

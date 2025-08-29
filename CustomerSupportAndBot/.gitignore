@@ -1,0 +1,13 @@
+# Secrets for this app
+.env
+*.env
+.streamlit/secrets.toml
+
+# Caches
+__pycache__/
+*.pyc
+
+# Local scratch data you don't want in git (keep your committed tiny index!)
+data/raw/
+data/tmp/
+data/cache/
