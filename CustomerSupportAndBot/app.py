@@ -20,7 +20,7 @@ from base64 import b64encode
 
 # --------------- Page config (set ONCE, at top) ---------------
 st.set_page_config(
-    page_title="ATAL Cloud Customer Support and BOT",
+    #page_title="ATAL Cloud Customer Support and BOT",
     page_icon="☁️",
     layout="wide",
 )
@@ -341,7 +341,7 @@ def validate_mcq_df(df: pd.DataFrame) -> Optional[str]:
     return None
 
 def view_mcq_student():
-    st.subheader("🧑‍💼 Employee Support (MCQ Student)")
+    st.subheader("🧑‍💼 Employee Support")
     df = load_mcq_csv()
     err = validate_mcq_df(df)
     if err:
