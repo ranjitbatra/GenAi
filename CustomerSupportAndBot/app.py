@@ -97,8 +97,7 @@ def render_brand_header():
 # Call once before tabs
 render_brand_header()
 
-# Call ONCE before creating tabs
-render_brand_header()
+
 
 # --------------- Env / Secrets ---------------
 load_dotenv()
