@@ -20,7 +20,7 @@ from base64 import b64encode
 APP_DIR = Path(__file__).parent.resolve()
 # --------------- Page config (set ONCE, at top) ---------------
 st.set_page_config(
-    page_title="ATAL Cloud Customer Support and BOT",
+    page_title="Customer Support and BOT",
     page_icon="☁️",
     layout="wide",
 )
@@ -83,7 +83,7 @@ def render_brand_header():
     <div class="ac-sticky">
       <div class="ac-header">
         {f'<img class="ac-logo" alt="ATAL Cloud" src="data:image/png;base64,{logo_b64}" />' if logo_b64 else ''}
-        <h2 class="ac-title">ATAL Cloud Customer Support and BOT</h2>
+        <h2 class="ac-title">Customer Support and BOT</h2>
       </div>
     </div>
   </body>
