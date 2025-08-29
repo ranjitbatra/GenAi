@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-# app.py — ATAL Cloud ECustomer Support and BOt (Customer Support(Retrieval) + MCQ Student + EURI Chat)
+# app.py — ATAL Cloud Customer Support and BOT
+# Tabs: Customer Support (Retrieval) + Employee Support (MCQ Student) + EURI Chat
 # - Customer Support  uses FAISS + EURI embeddings (text-embedding-3-small)
-# - MCQ Student reads a CSV (no EURI needed)
-# - Chat (EURI) uses only EURI chat completions API wheee GPT gpt-4.1-nano is hosted
+# - Employee Support reads a CSV (no EURI needed)
+# - Chat (EURI) uses only EURI chat-completions API where gpt-4.1-nano is hosted
+
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 import os, json, re
@@ -15,11 +17,18 @@ import faiss
 import requests
 from dotenv import load_dotenv
 from base64 import b64encode
-from pathlib import Path
 
+# --------------- Page config (set ONCE, at top) ---------------
+st.set_page_config(
+    page_title="ATAL Cloud Customer Support and BOT",
+    page_icon="☁️",
+    layout="wide",
+)
+
+# --------------- Sticky brand header (logo + red bold title) ---------------
 LOGO_PATH = os.getenv("ATAL_LOGO_PATH", "assets/atal_cloud_logo.png")
-def render_header_with_logo():
-    # inline logo as base64 (avoids st.image deprecation warnings)
+
+def render_brand_header():
     logo_tag = ""
     p = Path(LOGO_PATH)
     if p.exists():
@@ -27,60 +36,65 @@ def render_header_with_logo():
             b64 = b64encode(p.read_bytes()).decode("utf-8")
             logo_tag = f'<img class="ac-logo" alt="ATAL Cloud" src="data:image/png;base64,{b64}" />'
         except Exception:
-            logo_tag = ""
+            logo_tag = ""  # safe fallback
 
     st.markdown(
         f"""
         <style>
-          .ac-bar {{
-            display: flex;
-            justify-content: center;    /* center the whole block */
-            margin: 6px 0 12px;
+          .ac-sticky {{
+            position: sticky; top: 0; z-index: 1000;
+            background: #fff; border-bottom: 1px solid #eee;
           }}
-          .ac-inner {{
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;                  /* space between logo and title */
+          .ac-header {{
+            max-width: 1200px; margin: 0 auto; padding: 10px 12px;
+            display: flex; align-items: center; gap: 12px; justify-content: center;
           }}
-          .ac-logo {{ height: 40px; }}  /* adjust logo size as you like */
+          .ac-logo {{ height: 40px; }}
           .ac-title {{
             margin: 0;
-            font-weight: 700;           /* bold */
+            color: #dc2626;        /* red */
+            font-weight: 800;      /* bold */
+            font-size: 24px;
+            line-height: 1.2;
           }}
         </style>
-        <div class="ac-bar">
-          <div class="ac-inner">
+        <div class="ac-sticky">
+          <div class="ac-header">
             {logo_tag}
-            <h2 class="ac-title">Customer Support and BOT</h2>
+            <h2 class="ac-title">ATAL Cloud Customer Support and BOT</h2>
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-# ---------------- Env ----------------
+
+# Render header ONCE
+render_brand_header()
+
+# --------------- Env / Secrets ---------------
 load_dotenv()
-# after: load_dotenv()
+# Promote Streamlit Cloud "Secrets" to env vars if not already set
 try:
-    import streamlit as st
-    # Promote Streamlit secrets to env vars if not already set
-    for k in ["EURI_API_KEY","EURON_URL","EURON_MODEL",
-              "EURON_CHAT_URL","EURON_CHAT_MODEL","EURON_CHAT_TEMPERATURE"]:
+    for k in [
+        "EURI_API_KEY","EURON_URL","EURON_MODEL",
+        "EURON_CHAT_URL","EURON_CHAT_MODEL","EURON_CHAT_TEMPERATURE"
+    ]:
         if k in st.secrets and not os.getenv(k):
             os.environ[k] = str(st.secrets[k])
 except Exception:
     pass
-
 
 EURI_API_KEY = os.getenv("EURI_API_KEY", "")
 EURON_URL    = os.getenv("EURON_URL", "https://api.euron.one/api/v1/euri/embeddings")
 EURON_MODEL  = os.getenv("EURON_MODEL", "text-embedding-3-small")
 HEADERS = {"Content-Type": "application/json", "Authorization": f"Bearer {EURI_API_KEY}"}
 
-# Chat (EURI) — NEW (pure chat completions)
+# Chat (EURI) — pure chat completions
 EURON_CHAT_URL         = os.getenv("EURON_CHAT_URL", "https://api.euron.one/api/v1/euri/chat/completions")
 EURON_CHAT_MODEL       = os.getenv("EURON_CHAT_MODEL", "gpt-4.1-nano")
 EURON_CHAT_TEMPERATURE = float(os.getenv("EURON_CHAT_TEMPERATURE", "0.2"))
 
+# --------------- Paths ---------------
 INDEX_PATH = Path("data/index/docs.faiss.index")
 META_PATH  = Path("data/index/docs.faiss.metadata.jsonl")
 MCQ_DEFAULT_CSV = Path("data/eval/mcqs.csv")
@@ -93,7 +107,7 @@ DEFAULT_QUERIES = [
     "lost package what to do",
 ]
 
-# ---------------- Shared helpers ----------------
+# --------------- Shared helpers ---------------
 def read_jsonl(path: Path) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as f:
@@ -113,7 +127,7 @@ def embed_texts(texts: List[str]) -> np.ndarray:
     if not texts:
         return np.zeros((0, 0), dtype=np.float32)
     payload = {"input": texts, "model": EURON_MODEL}
-    # NOTE: keep `data=json.dumps(...)` as in your working 2-tab app
+    # Using data=json.dumps(...) to match your working flow
     resp = requests.post(EURON_URL, headers=HEADERS, data=json.dumps(payload), timeout=60)
     if resp.status_code != 200:
         try:
@@ -137,25 +151,23 @@ def load_index_and_meta():
         raise FileNotFoundError(f"Metadata not found: {META_PATH.resolve()}")
     return faiss.read_index(str(INDEX_PATH)), read_jsonl(META_PATH)
 
-# ---------------- Customer Support(Retrieval) table (final tuned) ----------------
+# --------------- Customer Support (Retrieval) table ---------------
 def render_custom_table(rows, max_height_px: int = 480, widths: dict = None):
     """
-    Precise widths + guaranteed bottom horizontal scrollbar + dynamic height.
+    Precise widths + bottom horizontal scrollbar + dynamic height.
     rank/score/id: narrow; title: medium; snippet: widest (nowrap).
-    Button can be placed right under because iframe height is tight.
     """
     import html
     if widths is None:
         widths = {
-            "rank": "4ch",      # very narrow
-            "score": "6ch",     # very narrow
-            "id": "10ch",       # ~8–10 chars
-            "title": "36ch",    # second widest
-            "snippet": "96ch",  # widest
+            "rank": "4ch",
+            "score": "6ch",
+            "id": "10ch",
+            "title": "36ch",
+            "snippet": "96ch",
         }
     headers = ["rank", "score", "id", "title", "snippet"]
 
-    # compute table min-width to ensure horizontal scroll
     def _sum_ch(wmap):
         total = 0.0
         for h in headers:
@@ -194,7 +206,6 @@ def render_custom_table(rows, max_height_px: int = 480, widths: dict = None):
 </table>
 """
 
-    # robust iframe height: header ~56px + 44px/row; cap + floor
     dynamic = 56 + 44 * max(len(rows), 1)
     calc_height = max(220, min(max_height_px, dynamic)) + 12
 
@@ -210,8 +221,8 @@ def render_custom_table(rows, max_height_px: int = 480, widths: dict = None):
   .wrap {{
     max-height:{max_height_px}px;
     min-height:180px;
-    overflow-y:auto;       /* vertical scroll */
-    overflow-x:auto;       /* HORIZONTAL SCROLLBAR AT THE BOTTOM */
+    overflow-y:auto;
+    overflow-x:auto;       /* horizontal scrollbar at bottom */
     border:1px solid var(--border);
     border-radius:8px;
     padding:6px;
@@ -219,8 +230,8 @@ def render_custom_table(rows, max_height_px: int = 480, widths: dict = None):
   }}
   .ztbl {{
     border-collapse: collapse;
-    table-layout: fixed;   /* respect colgroup widths */
-    width: max-content;    /* allow wider than wrapper */
+    table-layout: fixed;
+    width: max-content;
     min-width: {table_min_width};
   }}
   .ztbl th {{
@@ -237,7 +248,7 @@ def render_custom_table(rows, max_height_px: int = 480, widths: dict = None):
   .ztbl th.rank,  .ztbl td.rank  {{ text-align: right; white-space: nowrap; }}
   .ztbl th.score, .ztbl td.score {{ text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }}
   .ztbl th.id,    .ztbl td.id    {{ white-space: nowrap; }}
-  .ztbl td.snippet {{ white-space: nowrap; }} /* forces horizontal growth */
+  .ztbl td.snippet {{ white-space: nowrap; }}
 </style>
 </head>
 <body style="margin:0;padding:0;">
@@ -249,7 +260,7 @@ def render_custom_table(rows, max_height_px: int = 480, widths: dict = None):
 """
     components.html(html_doc, height=calc_height, scrolling=False)
 
-# ---------------- Customer Support (Retrieval) view ----------------
+# --------------- Customer Support (Retrieval) view ---------------
 def view_retrieval():
     st.subheader("🔎 Customer Support (EURI + FAISS)")
     q_pre = st.selectbox("Predefined query", DEFAULT_QUERIES, index=0, key="ret_q_pre")
@@ -263,7 +274,7 @@ def view_retrieval():
         return
 
     if not EURI_API_KEY:
-        st.error("Missing **EURI_API_KEY** in .env for Customer Support(Retrieval) mode.")
+        st.error("Missing **EURI_API_KEY** in .env for Customer Support (Retrieval) mode.")
         return
 
     try:
@@ -292,15 +303,19 @@ def view_retrieval():
         render_custom_table(rows, max_height_px=480, widths={
             "rank":"4ch","score":"6ch","id":"10ch","title":"36ch","snippet":"96ch"
         })
-        # Keep button close to table
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
         df = pd.DataFrame(rows, columns=["rank","score","id","title","snippet"])
-        st.download_button("Download CSV", df.to_csv(index=False).encode("utf-8"),
-                           file_name="search_results.csv", mime="text/csv", key="ret_dl")
+        st.download_button(
+            "Download CSV",
+            df.to_csv(index=False).encode("utf-8"),
+            file_name="search_results.csv",
+            mime="text/csv",
+            key="ret_dl",
+        )
     except Exception as e:
         st.error(str(e))
 
-# ---------------- Employee Support(MCQ Student) view ----------------
+# --------------- Employee Support (MCQ Student) ---------------
 REQUIRED_MCQ = {"question","A","B","C","D","correct"}
 
 def load_mcq_csv() -> pd.DataFrame:
@@ -326,7 +341,7 @@ def validate_mcq_df(df: pd.DataFrame) -> Optional[str]:
     return None
 
 def view_mcq_student():
-    st.subheader("📝 Employee Quiz")
+    st.subheader("🧑‍💼 Employee Support (MCQ Student)")
     df = load_mcq_csv()
     err = validate_mcq_df(df)
     if err:
@@ -408,15 +423,12 @@ def view_mcq_student():
             st.session_state.pop(f"quiz_sel_{i}", None)
         st.rerun()
 
-# ---------------- Chat BOT (EURI) — NEW ----------------
+# --------------- Chat BOT (EURI) ---------------
 def euri_chat(messages: List[Dict[str, str]],
               model: Optional[str] = None,
               temperature: Optional[float] = None,
               max_tokens: int = 400) -> str:
-    """
-    Pure EURI chat completions.
-    messages: [{"role": "system"/"user"/"assistant", "content": "..."}]
-    """
+    """Pure EURI chat completions."""
     mdl = (model or EURON_CHAT_MODEL or "gpt-4.1-nano").strip()
     temp = EURON_CHAT_TEMPERATURE if temperature is None else float(temperature)
     payload = {
@@ -442,10 +454,8 @@ def view_chat_euri_only():
         st.error("Missing **EURI_API_KEY** in .env for Chat mode.")
         return
 
-    # Show config to confirm
     st.caption(f"Using model: `{EURON_CHAT_MODEL}` at `{EURON_CHAT_URL}`")
 
-    # Session state for chat history (separate key so it won't touch other tabs)
     if "chat_euri_messages" not in st.session_state:
         st.session_state.chat_euri_messages = [
             {"role": "system", "content": "You are ATAL Cloud’s helpful assistant. Be concise and accurate."}
@@ -460,7 +470,6 @@ def view_chat_euri_only():
         ]
         st.rerun()
 
-    # Render history
     for m in st.session_state.chat_euri_messages:
         if m["role"] == "system":
             st.info(f"**System:** {m['content']}")
@@ -469,12 +478,10 @@ def view_chat_euri_only():
         elif m["role"] == "assistant":
             st.chat_message("assistant").markdown(m["content"])
 
-    # Input
     user_input = st.chat_input("Type your message…")
     if not user_input:
         return
 
-    # Append & call EURI
     st.session_state.chat_euri_messages.append({"role": "user", "content": user_input})
     try:
         assistant_text = euri_chat(
@@ -491,31 +498,7 @@ def view_chat_euri_only():
     st.chat_message("user").markdown(user_input)
     st.chat_message("assistant").markdown(assistant_text)
 
-# ---------------- Main UI ----------------
-#st.set_page_config(page_title="Customer Support and BOT", page_icon="☁️", layout="wide")
-#st.set_page_config(page_title="Customer Support and BOT",  layout="wide")
-#st.markdown("<h2 style='text-align:center;'>Customer Support and BOT</h2>", unsafe_allow_html=True)
-# ---- App header (sticky, bold, red) ----
-# ---- App header (sticky, bold, red) ----
-st.markdown("""
-<style>
-  .ac-title{
-    color:#dc2626;            /* red */
-    font-weight:800;          /* bold */
-    text-align:center;
-    margin:0; padding:10px 0;
-    layout="wide"
-    position:sticky; top:0;   /* stays visible when scrolling */
-    background:#fff; z-index:999; border-bottom:1px solid #eee;
-  }
-</style>
-<h2 class="ac-title">ATAL Cloud Customer Support and BOT</h2>
-""", unsafe_allow_html=True)
-
-
-render_header_with_logo()
-
-# Add the third tab (no other changes to your first two)
+# --------------- Tabs ---------------
 tab1, tab2, tab3 = st.tabs(["🔎 Customer Support", "📝 Employee Support", "💬 Chat BOT (EURI)"])
 with tab1:
     view_retrieval()
