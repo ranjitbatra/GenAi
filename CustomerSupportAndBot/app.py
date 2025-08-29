@@ -75,7 +75,7 @@ def render_brand_header():
         display: flex; align-items: center; gap: 12px; justify-content: center;
       }}
       .ac-logo {{ height: 40px; }}
-      .ac-title {{ margin:0; color:#dc2626; font-weight:800; font-size:24px; line-height:1.2; }}
+      .ac-title {{ margin:0; color:#2563EB; font-weight:800; font-size:24px; line-height:1.2; }}
       body {{ margin:0; }}
     </style>
   </head>
