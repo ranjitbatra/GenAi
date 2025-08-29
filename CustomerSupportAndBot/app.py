@@ -17,7 +17,7 @@ import faiss
 import requests
 from dotenv import load_dotenv
 from base64 import b64encode
-APP_DIR = Path(__file__).parent.resolve()
+
 # --------------- Page config (set ONCE, at top) ---------------
 st.set_page_config(
     page_title="Customer Support and BOT",
@@ -123,9 +123,24 @@ EURON_CHAT_MODEL       = os.getenv("EURON_CHAT_MODEL", "gpt-4.1-nano")
 EURON_CHAT_TEMPERATURE = float(os.getenv("EURON_CHAT_TEMPERATURE", "0.2"))
 
 # --------------- Paths ---------------
-INDEX_PATH = Path("data/index/docs.faiss.index")
-META_PATH  = Path("data/index/docs.faiss.metadata.jsonl")
-MCQ_DEFAULT_CSV = Path("data/eval/mcqs.csv")
+# INDEX_PATH = Path("data/index/docs.faiss.index")
+# META_PATH  = Path("data/index/docs.faiss.metadata.jsonl")
+# MCQ_DEFAULT_CSV = Path("data/eval/mcqs.csv")
+APP_DIR = Path(__file__).parent.resolve()
+def _resolve_data(path_str: str) -> Path:
+    """
+    Prefer repo-root path first (for existing Streamlit Cloud),
+    fall back to path next to app.py. This makes the app work
+    during/after the re-org.
+    """
+    root_path = Path(path_str)
+    if root_path.exists():
+        return root_path
+    return APP_DIR / path_str
+
+INDEX_PATH      = _resolve_data("data/index/docs.faiss.index")
+META_PATH       = _resolve_data("data/index/docs.faiss.metadata.jsonl")
+MCQ_DEFAULT_CSV = _resolve_data("data/eval/mcqs.csv")
 
 DEFAULT_QUERIES = [
     "refund policy for damaged items",
