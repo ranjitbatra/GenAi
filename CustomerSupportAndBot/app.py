@@ -28,31 +28,44 @@ st.set_page_config(
 # --------------- Sticky brand header (logo + red bold title) ---------------
 LOGO_PATH = os.getenv("ATAL_LOGO_PATH", "assets/atal_cloud_logo.png")
 
+def _safe_secret(key: str):
+    try:
+        return st.secrets.get(key)  # returns None if not set, and works on Streamlit Cloud
+    except Exception:
+        return None  # no secrets.toml locally
+
 def _find_logo_bytes() -> bytes | None:
     """
     Try multiple locations in priority order:
-    1) ATAL_LOGO_PATH (env or st.secrets)
-    2) CustomerSupportAndBot/assets/atal_cloud_logo.png  (next to app.py)
+    1) ATAL_LOGO_PATH from env or Streamlit Secrets
+    2) CustomerSupportAndBot/assets/atal_cloud_logo.png (next to app.py)
     3) repo-root/assets/atal_cloud_logo.png
     """
-    # 1) Secrets/env override
-    override = os.getenv("ATAL_LOGO_PATH") or (st.secrets.get("ATAL_LOGO_PATH") if "ATAL_LOGO_PATH" in st.secrets else None)
+    from pathlib import Path
+
+    APP_DIR = Path(__file__).parent.resolve()
+
+    # 1) env / secret override (safe)
+    override = os.getenv("ATAL_LOGO_PATH") or _safe_secret("ATAL_LOGO_PATH")
+
     candidates: list[Path] = []
     if override:
         candidates.append(Path(override))
 
     # 2) next to app.py
     candidates.append(APP_DIR / "assets" / "atal_cloud_logo.png")
-    # 3) repo root assets (in case you moved it)
+    # 3) repo root fallback
     candidates.append(Path("assets") / "atal_cloud_logo.png")
 
     for p in candidates:
         try:
-            if p.exists() and p.is_file():
-                return (APP_DIR / p if not p.is_absolute() and not p.exists() else p).read_bytes()
+            p2 = p if p.is_absolute() else (p if p.exists() else (APP_DIR / p))
+            if p2.exists() and p2.is_file():
+                return p2.read_bytes()
         except Exception:
             continue
     return None
+
 
 def render_brand_header():
     logo_b64 = ""
