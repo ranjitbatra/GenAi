@@ -493,8 +493,12 @@ def view_chat_euri_only():
 
 # ---------------- Main UI ----------------
 #st.set_page_config(page_title="Customer Support and BOT", page_icon="☁️", layout="wide")
-st.set_page_config(page_title="Customer Support and BOT",  layout="wide")
+#st.set_page_config(page_title="Customer Support and BOT",  layout="wide")
 #st.markdown("<h2 style='text-align:center;'>Customer Support and BOT</h2>", unsafe_allow_html=True)
+# ---- App header (sticky, bold, red) ----
+
+
+
 render_header_with_logo()
 
 # Add the third tab (no other changes to your first two)
