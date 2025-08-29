@@ -19,11 +19,11 @@ from dotenv import load_dotenv
 from base64 import b64encode
 
 # --------------- Page config (set ONCE, at top) ---------------
-st.set_page_config(
-    #page_title="ATAL Cloud Customer Support and BOT",
-    page_icon="☁️",
-    layout="wide",
-)
+# st.set_page_config(
+#     page_title="ATAL Cloud Customer Support and BOT",
+#     page_icon="☁️",
+#     layout="wide",
+# )
 
 # --------------- Sticky brand header (logo + red bold title) ---------------
 LOGO_PATH = os.getenv("ATAL_LOGO_PATH", "assets/atal_cloud_logo.png")
