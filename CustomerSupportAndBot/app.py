@@ -496,7 +496,21 @@ def view_chat_euri_only():
 #st.set_page_config(page_title="Customer Support and BOT",  layout="wide")
 #st.markdown("<h2 style='text-align:center;'>Customer Support and BOT</h2>", unsafe_allow_html=True)
 # ---- App header (sticky, bold, red) ----
-
+# ---- App header (sticky, bold, red) ----
+st.markdown("""
+<style>
+  .ac-title{
+    color:#dc2626;            /* red */
+    font-weight:800;          /* bold */
+    text-align:center;
+    margin:0; padding:10px 0;
+    layout="wide"
+    position:sticky; top:0;   /* stays visible when scrolling */
+    background:#fff; z-index:999; border-bottom:1px solid #eee;
+  }
+</style>
+<h2 class="ac-title">ATAL Cloud Customer Support and BOT</h2>
+""", unsafe_allow_html=True)
 
 
 render_header_with_logo()
