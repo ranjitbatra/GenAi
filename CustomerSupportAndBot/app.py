@@ -19,56 +19,57 @@ from dotenv import load_dotenv
 from base64 import b64encode
 
 # --------------- Page config (set ONCE, at top) ---------------
-# st.set_page_config(
-#     page_title="ATAL Cloud Customer Support and BOT",
-#     page_icon="☁️",
-#     layout="wide",
-# )
+st.set_page_config(
+    page_title="ATAL Cloud Customer Support and BOT",
+    page_icon="☁️",
+    layout="wide",
+)
 
 # --------------- Sticky brand header (logo + red bold title) ---------------
 LOGO_PATH = os.getenv("ATAL_LOGO_PATH", "assets/atal_cloud_logo.png")
 
 def render_brand_header():
-    logo_tag = ""
-    p = Path(LOGO_PATH)
-    if p.exists():
-        try:
-            b64 = b64encode(p.read_bytes()).decode("utf-8")
-            logo_tag = f'<img class="ac-logo" alt="ATAL Cloud" src="data:image/png;base64,{b64}" />'
-        except Exception:
-            logo_tag = ""  # safe fallback
+    # inline logo so we don’t rely on st.image warnings or relative paths
+    logo_html = ""
+    try:
+        if LOGO_PATH.exists():
+            b64 = b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
+            logo_html = f'<img class="ac-logo" alt="ATAL Cloud" src="data:image/png;base64,{b64}" />'
+    except Exception:
+        pass
 
-    st.markdown(
-        f"""
-        <style>
-          .ac-sticky {{
-            position: sticky; top: 0; z-index: 1000;
-            background: #fff; border-bottom: 1px solid #eee;
-          }}
-          .ac-header {{
-            max-width: 1200px; margin: 0 auto; padding: 10px 12px;
-            display: flex; align-items: center; gap: 12px; justify-content: center;
-          }}
-          .ac-logo {{ height: 40px; }}
-          .ac-title {{
-            margin: 0;
-            color: #dc2626;        /* red */
-            font-weight: 800;      /* bold */
-            font-size: 24px;
-            line-height: 1.2;
-          }}
-        </style>
-        <div class="ac-sticky">
-          <div class="ac-header">
-            {logo_tag}
-            <h2 class="ac-title">ATAL Cloud Customer Support and BOT</h2>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    html = f"""
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      .ac-sticky {{
+        position: sticky; top: 0; z-index: 1000;
+        background: #fff; border-bottom: 1px solid #eee;
+      }}
+      .ac-header {{
+        max-width: 1200px; margin: 0 auto; padding: 10px 12px;
+        display: flex; align-items: center; gap: 12px; justify-content: center;
+      }}
+      .ac-logo {{ height: 40px; }}
+      .ac-title {{ margin:0; color:#dc2626; font-weight:800; font-size:24px; line-height:1.2; }}
+      body {{ margin:0; }}
+    </style>
+  </head>
+  <body>
+    <div class="ac-sticky">
+      <div class="ac-header">
+        {logo_html}
+        <h2 class="ac-title">ATAL Cloud Customer Support and BOT</h2>
+      </div>
+    </div>
+  </body>
+</html>
+"""
+    components.html(html, height=66, scrolling=False)
 
-# Render header ONCE
+# Call ONCE before creating tabs
 render_brand_header()
 
 # --------------- Env / Secrets ---------------
