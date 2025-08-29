@@ -17,7 +17,7 @@ import faiss
 import requests
 from dotenv import load_dotenv
 from base64 import b64encode
-
+APP_DIR = Path(__file__).parent.resolve()
 # --------------- Page config (set ONCE, at top) ---------------
 st.set_page_config(
     page_title="ATAL Cloud Customer Support and BOT",
@@ -28,16 +28,38 @@ st.set_page_config(
 # --------------- Sticky brand header (logo + red bold title) ---------------
 LOGO_PATH = os.getenv("ATAL_LOGO_PATH", "assets/atal_cloud_logo.png")
 
-def render_brand_header():
-    # inline logo so we don’t rely on st.image warnings or relative paths
-    logo_html = ""
-    try:
-        if LOGO_PATH.exists():
-            b64 = b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
-            logo_html = f'<img class="ac-logo" alt="ATAL Cloud" src="data:image/png;base64,{b64}" />'
-    except Exception:
-        pass
+def _find_logo_bytes() -> bytes | None:
+    """
+    Try multiple locations in priority order:
+    1) ATAL_LOGO_PATH (env or st.secrets)
+    2) CustomerSupportAndBot/assets/atal_cloud_logo.png  (next to app.py)
+    3) repo-root/assets/atal_cloud_logo.png
+    """
+    # 1) Secrets/env override
+    override = os.getenv("ATAL_LOGO_PATH") or (st.secrets.get("ATAL_LOGO_PATH") if "ATAL_LOGO_PATH" in st.secrets else None)
+    candidates: list[Path] = []
+    if override:
+        candidates.append(Path(override))
 
+    # 2) next to app.py
+    candidates.append(APP_DIR / "assets" / "atal_cloud_logo.png")
+    # 3) repo root assets (in case you moved it)
+    candidates.append(Path("assets") / "atal_cloud_logo.png")
+
+    for p in candidates:
+        try:
+            if p.exists() and p.is_file():
+                return (APP_DIR / p if not p.is_absolute() and not p.exists() else p).read_bytes()
+        except Exception:
+            continue
+    return None
+
+def render_brand_header():
+    logo_b64 = ""
+    b = _find_logo_bytes()
+    if b:
+        logo_b64 = b64encode(b).decode("utf-8")
+    # Build the header HTML (use components.html so Streamlit doesn't sanitize it)
     html = f"""
 <!doctype html>
 <html>
@@ -60,7 +82,7 @@ def render_brand_header():
   <body>
     <div class="ac-sticky">
       <div class="ac-header">
-        {logo_html}
+        {f'<img class="ac-logo" alt="ATAL Cloud" src="data:image/png;base64,{logo_b64}" />' if logo_b64 else ''}
         <h2 class="ac-title">ATAL Cloud Customer Support and BOT</h2>
       </div>
     </div>
@@ -68,6 +90,12 @@ def render_brand_header():
 </html>
 """
     components.html(html, height=66, scrolling=False)
+    # Tiny debug hint if the logo wasn't found — remove once you see it working
+    if not b:
+        st.caption("Logo not found. Set ATAL_LOGO_PATH or keep assets/atal_cloud_logo.png next to app.py.")
+
+# Call once before tabs
+render_brand_header()
 
 # Call ONCE before creating tabs
 render_brand_header()
